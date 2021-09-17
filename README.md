@@ -8,6 +8,6 @@
 
 
 ## Configuracion
-![github-small](https://github.com/TheLast20/Proyecto_Draw_Pick_Place_RobotDK/blob/main/Capturas/Telegram_%231.png)
+![github-medium](https://github.com/TheLast20/CODE_ECUA_MEDIDOR/blob/main/picture/Configuracion.png)
 
 
