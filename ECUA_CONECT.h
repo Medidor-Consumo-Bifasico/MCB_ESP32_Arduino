@@ -3,7 +3,7 @@
   Script Para la conexion y configuracion de ESP32-Medidores Consumo
 */
 #pragma once
-#include <Preferences.h>
+#include <EEPROM.h>
 #include <ESP32Time.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -61,11 +61,13 @@ const long  gmtOffset_sec = -5 * 3600;
 const int   daylightOffset_sec = 0;
 
 // ----------- Credenciales WIFI -----------
+#define EEPROM_SIZE 512
+
+char flash[20];
 char ssid[30];
 char password[30];
 
 // ------------------ HILOS -----------------------
-Preferences credenciales;
 Scheduler RedScheduler;
 
 void ConectMQTT(void);
@@ -121,17 +123,14 @@ class EcuaRed
     bool Config = false;
 
     bool begin() {
-      credenciales.begin("ECUAPLUS", false);
-      String SID = credenciales.getString("ssid", "none");
-      String PASS = credenciales.getString("password", "none");
 
-      SID.toCharArray(ssid, 30);
-      PASS.toCharArray(password, 30);
+      EEPROM.begin(EEPROM_SIZE);
 
-      credenciales.putString("ssid", "NETLIFE-BAZURTO");
-      credenciales.putString("password", "0990919594");
 
-      credenciales.end();
+      EEPROM.get(20, flash);
+      EEPROM.get(40, ssid);
+      EEPROM.get(70, password);
+      EEPROM.end();
 
       Serial.println("Credenciales: ");
       Serial.println(ssid);
@@ -141,13 +140,18 @@ class EcuaRed
       WiFi.disconnect(true);
       delay(1000);
 
+      if (flash != "listo") {
+        Serial.println("No hay credenciales");
+        Config = true;
+
+        return false;
+      }
+
       WiFi.onEvent(WiFiGotIP, SYSTEM_EVENT_STA_GOT_IP);
       WiFi.onEvent(WiFiStationDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
 
-
       WiFi.mode(WIFI_AP_STA);
       WiFi.begin(ssid, password);
-
 
       delay(3000);
 
@@ -161,25 +165,28 @@ class EcuaRed
       //Activamos las credenciales
       task_ConectMQTT.enable();
 
-
-
-      return false;
+      return true;
     }
 
 
     String config(void) {
       Config = true;
-      
+
       task_ConectMQTT.disable();
       client.disconnect();
       WiFi.disconnect(true);
       delay(2000);
-      
+
+      WiFi.mode(WIFI_MODE_APSTA);
+
       WiFi.softAP(ssid_web, password_web);
       IPAddress myIP = WiFi.softAPIP();
       Serial.print("AP IP address: ");
       Serial.println(myIP);
       Serial.println(myIP.toString());
+
+      char wifi_network_ssid[30];
+      char wifi_network_password[30];
 
       // Send web page with input fields to client
       server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
@@ -189,17 +196,66 @@ class EcuaRed
       // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
       server.on("/get", HTTP_GET, [] (AsyncWebServerRequest * request) {
 
-        String Name = request->getParam(PARAM_INPUT_1)->value();
-        String Pass = request->getParam(PARAM_INPUT_2)->value();
+        char wifi_network_ssid[30];
+        char wifi_network_password[30];
 
-        request->send(200, "text/html", "HTTP GET request sent to your ESP on input field <br><a href=\"/\">Return to Home Page</a>");
+        request->getParam(PARAM_INPUT_1)->value().toCharArray(wifi_network_ssid, 30);
+        request->getParam(PARAM_INPUT_2)->value().toCharArray(wifi_network_password, 30);
+
+        Serial.print("SSID: ");
+        Serial.println(wifi_network_ssid);
+        Serial.print("PASS: ");
+        Serial.println(wifi_network_password);
+
+        WiFi.begin(wifi_network_ssid, wifi_network_password);
+
+        int conteo = 0;
+
+        while (WiFi.status() != WL_CONNECTED and conteo < 4) {
+          delay(750);
+          Serial.println("Connecting to WiFi..");
+          conteo++;
+        }
+
+        if (WiFi.status() != WL_CONNECTED) {
+          Serial.println("Credenciales invalidas");
+          request->send(200, "text/html", "No se pudo conectar a la red establecida intentelo de nuevo<br><a href=\"/\">Return to Home Page</a>");
+          WiFi.disconnect(true);
+
+        }
+        else {
+          Serial.println("Credenciales validas");
+
+          EEPROM.begin(EEPROM_SIZE);
+
+          char flash_STATE[20];
+          EEPROM.get(20, flash_STATE);
+
+          if (flash_STATE != "listo") {
+            EEPROM.put(20, "listo");
+          }
+
+          EEPROM.put(40, wifi_network_ssid);
+          EEPROM.put(70, wifi_network_password);
+          EEPROM.commit();
+          EEPROM.end();
+
+
+          request->send(200, "text/html", "Conexion exitosa, guardando credenciales <br>");
+
+          ESP.restart();
+
+        }
+
+
+
       });
       server.onNotFound(notFound);
       server.begin();
 
 
       Serial.println("Server started");
-      
+
       return myIP.toString();
     }
 

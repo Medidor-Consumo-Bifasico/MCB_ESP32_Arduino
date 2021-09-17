@@ -42,12 +42,12 @@ void TaskMediciones(void);
 void TaskGrafica(void);
 void TaskConfiguracion(void);
 
-Task task_Boton(TASK_MILLISECOND * 50, TASK_FOREVER, &TaskBoton);
-Task task_Menu(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskMenu);
-Task task_Configuracion(TASK_MILLISECOND * 500, 1, &TaskConfiguracion);
+Task task_Boton(TASK_MILLISECOND * 50, TASK_FOREVER, &TaskBoton, &DisplayScheduler);
+Task task_Menu(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskMenu, &DisplayScheduler);
+Task task_Configuracion(TASK_MILLISECOND * 500, 1, &TaskConfiguracion, &DisplayScheduler);
 
-Task task_Mediciones(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskMediciones);
-Task task_Grafica(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskGrafica);
+Task task_Mediciones(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskMediciones, &DisplayScheduler);
+Task task_Grafica(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskGrafica, &DisplayScheduler);
 
 String IP;
 
@@ -248,7 +248,7 @@ class EcuaDisplay
       OLED = oled;
     }
 
-    void begin(void) {
+    void begin(bool configurate) {
       pinMode(BOTON, INPUT_PULLDOWN);
       DisplayScheduler.addTask(task_Boton);
       task_Boton.enable();
@@ -285,11 +285,13 @@ class EcuaDisplay
         }
         display.display();
 
-        DisplayScheduler.addTask(task_Menu);
-        DisplayScheduler.addTask(task_Mediciones);
-        DisplayScheduler.addTask(task_Grafica);
-        DisplayScheduler.addTask(task_Configuracion);
-        task_Menu.enable();
+        if (configurate) {
+          task_Configuracion.enable();
+        }
+        else {
+          task_Menu.enable();
+        }
+
       }
     }
 

@@ -35,17 +35,17 @@ void setup() {
   pinMode(LED_G, OUTPUT);
   pinMode(LED_B, OUTPUT);
 
-  //Display
-  EcuaDisplay.begin();
-
   //setup_ECUA_CONECT();
-  while (EcuaRed.begin()) {
+
+  if (EcuaRed.begin()){
+    T_MEDICION.enable();
+    Serial.println("Habilitado");
   }
 
-  T_BLK.enable();
-  T_MEDICION.enable();
+    //Display
+  EcuaDisplay.begin(EcuaRed.Config);
 
-  Serial.println("Habilitado");
+  T_BLK.enable();
 }
 
 void loop() {
