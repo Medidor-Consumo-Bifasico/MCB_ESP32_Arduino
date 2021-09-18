@@ -23,7 +23,7 @@ const char* PARAM_INPUT_3 = "input3";
 // HTML web page to handle 3 input fields (input1, input2, input3)
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html><head>
-  <title>ECUAPLUSS</title>
+  <title>ECUAPLUS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   </head><body>
   <h2> ECUAPLUS - MC<h2>
@@ -123,10 +123,7 @@ class EcuaRed
     bool Config = false;
 
     bool begin() {
-
       EEPROM.begin(EEPROM_SIZE);
-
-
       EEPROM.get(20, flash);
       EEPROM.get(40, ssid);
       EEPROM.get(70, password);
@@ -140,7 +137,7 @@ class EcuaRed
       WiFi.disconnect(true);
       delay(1000);
 
-      if (flash != "listo") {
+      if (String(flash) != "listo") {
         Serial.println("No hay credenciales");
         Config = true;
 
@@ -212,7 +209,7 @@ class EcuaRed
         int conteo = 0;
 
         while (WiFi.status() != WL_CONNECTED and conteo < 4) {
-          delay(750);
+          delay(1000);
           Serial.println("Connecting to WiFi..");
           conteo++;
         }
@@ -231,7 +228,7 @@ class EcuaRed
           char flash_STATE[20];
           EEPROM.get(20, flash_STATE);
 
-          if (flash_STATE != "listo") {
+          if (String(flash_STATE) != "listo") {
             EEPROM.put(20, "listo");
           }
 

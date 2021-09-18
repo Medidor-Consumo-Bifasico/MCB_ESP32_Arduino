@@ -37,12 +37,12 @@ void setup() {
 
   //setup_ECUA_CONECT();
 
-  if (EcuaRed.begin()){
+  if (EcuaRed.begin()) {
     T_MEDICION.enable();
     Serial.println("Habilitado");
   }
 
-    //Display
+  //Display
   EcuaDisplay.begin(EcuaRed.Config);
 
   T_BLK.enable();
@@ -62,8 +62,6 @@ void TaskBlink() { // This is a task.
     digitalWrite(LED_B, HIGH);
     T_BLK.disable();
     T_MEDICION.disable();
-    
-
   }
   else if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(LED_R, !digitalRead(LED_R));

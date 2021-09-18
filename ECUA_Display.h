@@ -49,6 +49,7 @@ Task task_Configuracion(TASK_MILLISECOND * 500, 1, &TaskConfiguracion, &DisplayS
 Task task_Mediciones(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskMediciones, &DisplayScheduler);
 Task task_Grafica(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskGrafica, &DisplayScheduler);
 
+
 String IP;
 
 
@@ -228,14 +229,20 @@ void TaskGrafica(void) {
 
 void TaskConfiguracion(void) {
   String dato = EcuaRed.config();
-  display.clearDisplay();  // limpia el buffer del display
-  display.setTextSize(2);  // ajusta el tamaño de texto en el minimo valor
-  display.setCursor(0, 0);
-  display.println("Ip: ");
-  display.println("");
-  display.setTextSize(1.50);  // ajusta el tamaño de texto en el minimo valor
-  display.println(dato);
-  display.display();
+
+  if (OLED) {
+    display.clearDisplay();  // limpia el buffer del display
+    display.setTextSize(2);  // ajusta el tamaño de texto en el minimo valor
+    display.setCursor(0, 0);
+    display.println("Ip: ");
+    display.println("");
+    display.setTextSize(1);  // ajusta el tamaño de texto en el minimo valor
+    display.println(dato);
+    display.display();
+
+  }
+
+
 
 }
 
@@ -257,10 +264,9 @@ class EcuaDisplay
         Wire.begin();
         if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
           Serial.println(F("SSD1306 allocation failed"));
-          for (;;); // Don't proceed, loop forever
+          OLED = false;
+          return;
         }
-
-
         display.setTextColor(SSD1306_WHITE); // Dibujamos en color Blanco
         display.cp437(true);
         display.setRotation(0);  // se escoje la orientacion del display puede ser 0 o 2
@@ -290,6 +296,12 @@ class EcuaDisplay
         }
         else {
           task_Menu.enable();
+        }
+      }
+
+      else {
+        if (configurate) {
+          task_Configuracion.enable();
         }
 
       }
