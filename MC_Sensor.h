@@ -24,7 +24,7 @@ class Medidor_Consumo
     PZEM004Tv30 _faseB;
 
     //Json
-    StaticJsonDocument<768> doc;
+    StaticJsonDocument<1600> doc;
     JsonArray sensores;
 
     JsonObject sensores_0;
@@ -45,6 +45,8 @@ class Medidor_Consumo
     String type;
 
     ESP32Time RTC;
+
+    void updateJson(void);
 
   public:
     //Constructor
