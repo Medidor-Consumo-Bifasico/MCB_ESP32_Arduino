@@ -10,6 +10,10 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 
+#include "ECUA_CONECT_HTML_ERROR.h"
+#include "ECUA_CONECT_HTML_MAIN.h"
+#include "ECUA_CONECT_HTML_OK.h"
+
 // ---------- Web Server -------------
 AsyncWebServer server(80);
 const char *ssid_web = "ECUAPLUS_MC";
@@ -20,26 +24,9 @@ const char* PARAM_INPUT_2 = "input2";
 const char* PARAM_INPUT_3 = "input3";
 
 
-// HTML web page to handle 3 input fields (input1, input2, input3)
-const char index_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE HTML><html><head>
-  <title>ECUAPLUS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  </head><body>
-  <h2> ECUAPLUS - MC<h2>
-  <h3> Credenciales WIFI</h3>
-  <form action="/get">
-    SSID    : <input type="text" name="input1"><br>
-    PASSWORD: <input type="text" name="input2"><br>
-    <input type="submit" value="Submit">
-  </form><br>
-  
-</body></html>)rawliteral";
-
 void notFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
-
 
 // ----------- Credenciales MQTT -----------
 #define MQTT_MAX_PACKET_SIZE 512
@@ -216,7 +203,7 @@ class EcuaRed
 
         if (WiFi.status() != WL_CONNECTED) {
           Serial.println("Credenciales invalidas");
-          request->send(200, "text/html", "No se pudo conectar a la red establecida intentelo de nuevo<br><a href=\"/\">Return to Home Page</a>");
+          request->send(200, "text/html", index_html_error);
           WiFi.disconnect(true);
 
         }
@@ -238,8 +225,8 @@ class EcuaRed
           EEPROM.end();
 
 
-          request->send(200, "text/html", "Conexion exitosa, guardando credenciales <br>");
-
+          request->send(200, "text/html", index_html_ok);
+          delay(10000);
           ESP.restart();
 
         }

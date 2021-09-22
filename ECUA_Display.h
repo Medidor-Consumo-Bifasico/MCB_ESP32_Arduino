@@ -228,8 +228,9 @@ void TaskGrafica(void) {
 
 
 void TaskConfiguracion(void) {
+  Serial.println("configurate");
   String dato = EcuaRed.config();
-
+  Serial.println(dato);
   if (OLED) {
     display.clearDisplay();  // limpia el buffer del display
     display.setTextSize(2);  // ajusta el tamaño de texto en el minimo valor
@@ -256,6 +257,7 @@ class EcuaDisplay
     }
 
     void begin(bool configurate) {
+      Serial.println(configurate);
       pinMode(BOTON, INPUT_PULLDOWN);
       DisplayScheduler.addTask(task_Boton);
       task_Boton.enable();
@@ -301,7 +303,7 @@ class EcuaDisplay
 
       else {
         if (configurate) {
-          task_Configuracion.enable();
+          TaskConfiguracion();
         }
 
       }

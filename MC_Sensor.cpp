@@ -23,21 +23,6 @@ Medidor_Consumo::Medidor_Consumo(String tipo, ESP32Time rtc):
   SensorFaseA = {0, 0, 0, 0, 0, 0};
   SensorFaseB = {0, 0, 0, 0, 0, 0};
 
-  sensores_0 = sensores.createNestedObject();
-  sensores_1 = sensores.createNestedObject();
-  sensores_2 = sensores.createNestedObject();
-  sensores_3 = sensores.createNestedObject();
-  sensores_4 = sensores.createNestedObject();
-  sensores_5 = sensores.createNestedObject();
-
-  if (type == "BIFASICO") {
-    sensores_6 = sensores.createNestedObject();
-    sensores_7 = sensores.createNestedObject();
-    sensores_8 = sensores.createNestedObject();
-    sensores_9 = sensores.createNestedObject();
-    sensores_10 = sensores.createNestedObject();
-    sensores_11 = sensores.createNestedObject();
-  }
 }
 
 
@@ -103,6 +88,14 @@ void Medidor_Consumo::updateJson(void) {
   doc["modelo"] = "MC_" + type;
   sensores = doc.createNestedArray("sensores");
 
+  sensores_0 = sensores.createNestedObject();
+  sensores_1 = sensores.createNestedObject();
+  sensores_2 = sensores.createNestedObject();
+  sensores_3 = sensores.createNestedObject();
+  sensores_4 = sensores.createNestedObject();
+  sensores_5 = sensores.createNestedObject();
+
+
   //----------VOLTAJE-------------
   sensores_0["nombre"] = "VA";
   sensores_0["valor"] = String(SensorFaseA.voltaje);
@@ -135,6 +128,13 @@ void Medidor_Consumo::updateJson(void) {
 
 
   if (type == "BIFASICO") {
+    sensores_6 = sensores.createNestedObject();
+    sensores_7 = sensores.createNestedObject();
+    sensores_8 = sensores.createNestedObject();
+    sensores_9 = sensores.createNestedObject();
+    sensores_10 = sensores.createNestedObject();
+    sensores_11 = sensores.createNestedObject();
+
     //----------VOLTAJE-------------
     sensores_6["nombre"] = "VB";
     sensores_6["valor"] = String(SensorFaseB.voltaje);
@@ -165,19 +165,16 @@ void Medidor_Consumo::updateJson(void) {
     sensores_11["valor"] = String(SensorFaseB.FP);
     sensores_11["unidadMedicion"] = "";
   }
+  
+  text_Json = "";
+  serializeJson(doc, text_Json);
 }
 
 
 String Medidor_Consumo::generateString(void) {
   //Actualizo datos del json
-
   FECHA_HORA = RTC.getTime("#%Y-%m-%d#%H:%M:%S#");
-
   medicion();
   updateJson();
-
-  Texto = "";
-  serializeJson(doc, Texto);
-
-  return MAC + FECHA_HORA + Texto;
+  return MAC + FECHA_HORA + text_Json;
 }

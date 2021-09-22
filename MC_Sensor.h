@@ -45,8 +45,8 @@ class Medidor_Consumo
     String type;
 
     ESP32Time RTC;
-
     void updateJson(void);
+    
 
   public:
     //Constructor
@@ -57,7 +57,7 @@ class Medidor_Consumo
     structPZEM004 SensorFaseB;
 
 
-    String Texto;
+    String text_Json;
 
 
     //Funciones

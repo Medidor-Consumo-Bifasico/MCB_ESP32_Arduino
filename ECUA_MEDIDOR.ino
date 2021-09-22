@@ -83,5 +83,6 @@ void TaskBlink() { // This is a task.
 void TaskMedicion() { // This is a task.
   char msg[500];
   MC.generateString().toCharArray(msg, 500);
+  Serial.println(msg);
   client.publish("topicPrincipal", msg);
 }
