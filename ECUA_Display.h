@@ -1,5 +1,6 @@
 /*
   Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
+  GitHub: https://github.com/TheLast20/CODIGO-Medidor-Consumo-Electrico-Bifasico
   Sistemas de display
 */
 

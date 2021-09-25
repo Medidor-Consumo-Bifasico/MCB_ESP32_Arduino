@@ -1,6 +1,7 @@
 /*
   Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
-
+  GitHub: https://github.com/TheLast20/CODIGO-Medidor-Consumo-Electrico-Bifasico
+  
   Bit_map de 128x64 bit, software usado
   http://javl.github.io/image2cpp/
 */
