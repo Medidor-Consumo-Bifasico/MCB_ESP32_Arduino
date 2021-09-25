@@ -1,3 +1,8 @@
+/*
+  Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
+  HTML web page OK
+*/
+
 const char index_html_ok[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
@@ -5,7 +10,7 @@ const char index_html_ok[] PROGMEM = R"rawliteral(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Formulario de contacto</title>
+    <title>ECUAPLUS CREDENCIALES</title>
 </head>
 
 <style>
@@ -140,8 +145,8 @@ form.form_contact h2{
                 <h2>INFORMACION<br>DE CONTACTO</h2>
             </section>
             <section class="info_items">
-                <p><span class="fa fa-envelope"></span> ecuaplus@gmail.com</p>
-                <p><span class="fa fa-mobile"></span> +5939876543210</p>
+                <p><span class="fa fa-envelope"></span> ecuapluss@gmail.com</p>
+                <p><span class="fa fa-mobile"></span> +593984766501</p>
             </section>
         </section>
 

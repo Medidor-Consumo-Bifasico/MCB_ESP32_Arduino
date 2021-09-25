@@ -1,3 +1,8 @@
+/*
+  Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
+  Sistemas de display
+*/
+
 #pragma once
 #include <SPI.h>
 #include <Wire.h>
@@ -17,6 +22,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 //********** PIN **********
 #define BOTON 35
 
+bool Menu_Config = false;
 
 int Num_Menu = 1;
 bool SubMenu = false;
@@ -44,7 +50,6 @@ void TaskConfiguracion(void);
 
 Task task_Boton(TASK_MILLISECOND * 50, TASK_FOREVER, &TaskBoton, &DisplayScheduler);
 Task task_Menu(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskMenu, &DisplayScheduler);
-Task task_Configuracion(TASK_MILLISECOND * 500, 1, &TaskConfiguracion, &DisplayScheduler);
 
 Task task_Mediciones(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskMediciones, &DisplayScheduler);
 Task task_Grafica(TASK_MILLISECOND * 500, TASK_FOREVER, &TaskGrafica, &DisplayScheduler);
@@ -62,8 +67,18 @@ void TaskBoton(void) {
     if (t > 50) {
       if (t > 1200) {
         Serial.println("Pulso Largo");
+        if (OLED == false) {
+          if (Menu_Config){
+            ESP.restart();
+          }
+          else{
+            TaskConfiguracion();
+            OLED = true;
+          }
+          
+        }
 
-        if (not(SubMenu)) {
+        else if (not(SubMenu)) {
           if (Num_Menu == 1) {
             task_Menu.disable();
             task_Mediciones.enable();
@@ -89,7 +104,7 @@ void TaskBoton(void) {
 
           else if (Num_Menu == 3) {
             task_Menu.disable();
-            task_Configuracion.enable();
+            TaskConfiguracion();
           }
         }
 
@@ -294,7 +309,7 @@ class EcuaDisplay
         display.display();
 
         if (configurate) {
-          task_Configuracion.enable();
+          TaskConfiguracion();
         }
         else {
           task_Menu.enable();

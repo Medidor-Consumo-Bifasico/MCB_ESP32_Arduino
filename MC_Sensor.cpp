@@ -1,32 +1,59 @@
+/*
+  Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
+  Sensor PZEM004T
+*/
+
 #include "MC_Sensor.h"
 
-#if defined(ESP32)
 #define RX2 16
 #define TX2 17
-#elif defined(ESP8266)
-#define RX2 15
-#define TX2 14
-#else
-#define RX2 16
-#define TX2 17
-#endif
 
-Medidor_Consumo::Medidor_Consumo(String tipo, ESP32Time rtc):
-  _faseA(Serial2, RX2, TX2, 0x01),
-  _faseB(Serial2, RX2, TX2, 0x02)
+Medidor_Consumo::Medidor_Consumo():
+  _faseA(Serial2, RX2, TX2, 0x20),
+  _faseB(Serial2, RX2, TX2, 0x05)
 {
-
-  type = tipo;
-  MAC = WiFi.macAddress();
-  RTC = rtc;
-
   SensorFaseA = {0, 0, 0, 0, 0, 0};
   SensorFaseB = {0, 0, 0, 0, 0, 0};
 
 }
 
+void Medidor_Consumo::begin(String tipo, ESP32Time rtc) {
+  type = tipo;
+  MAC = WiFi.macAddress();
+  RTC = rtc;
+}
+
+void Medidor_Consumo::reset(String comando) {
+  if (comando == "ALL") {
+    Serial.println("Reset Bifasico");
+    _faseA.resetEnergy(); 
+    if (type == "BIFASICO") {
+      _faseB.resetEnergy();
+    }
+  }
+  else if (comando == "S1") {
+    Serial.println("Reset S1");
+    _faseA.resetEnergy();
+  }
+
+  else if (comando == "S2") {
+    Serial.println("Reset S2");
+    if (type == "BIFASICO") {
+      _faseB.resetEnergy();
+    }
+  }
+}
+
+
+void Medidor_Consumo::address(PZEM004Tv30 sensor){
+    Serial.print("PZEM ");
+    Serial.print("Address:");
+    Serial.println(sensor.getAddress(), HEX);
+    Serial.println("===================");
+}
 
 void Medidor_Consumo::medicion(void) {
+  address(_faseA);
   SensorFaseA.voltaje = _faseA.voltage();
   SensorFaseA.corriente = _faseA.current();
   SensorFaseA.potencia = _faseA.power();
@@ -54,6 +81,7 @@ void Medidor_Consumo::medicion(void) {
   }
 
   if (type == "BIFASICO") {
+    address(_faseB);
     SensorFaseB.voltaje = _faseB.voltage();
     SensorFaseB.corriente = _faseB.current();
     SensorFaseB.potencia = _faseB.power();
@@ -94,7 +122,6 @@ void Medidor_Consumo::updateJson(void) {
   sensores_3 = sensores.createNestedObject();
   sensores_4 = sensores.createNestedObject();
   sensores_5 = sensores.createNestedObject();
-
 
   //----------VOLTAJE-------------
   sensores_0["nombre"] = "VA";
@@ -166,6 +193,11 @@ void Medidor_Consumo::updateJson(void) {
     sensores_11["unidadMedicion"] = "";
   }
   
+  temperatura = sensores.createNestedObject();
+  temperatura["nombre"] = "TEMP";
+  temperatura["valor"] = String((temprature_sens_read() - 32) / 1.8);
+  temperatura["unidadMedicion"] = "C";
+
   text_Json = "";
   serializeJson(doc, text_Json);
 }

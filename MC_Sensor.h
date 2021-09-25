@@ -1,3 +1,8 @@
+/*
+  Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
+  Sensor PZEM004T
+*/
+
 #pragma once
 #include <Preferences.h>
 #include <WiFi.h>
@@ -5,6 +10,14 @@
 #include <ArduinoJson.h>
 #include <ESP32Time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+uint8_t temprature_sens_read();
+#ifdef __cplusplus
+}
+#endif
+uint8_t temprature_sens_read();
 
 struct structPZEM004 {
   float voltaje;
@@ -39,6 +52,7 @@ class Medidor_Consumo
     JsonObject sensores_9;
     JsonObject sensores_10;
     JsonObject sensores_11;
+    JsonObject temperatura;
 
     String FECHA_HORA;
     String MAC;
@@ -50,7 +64,7 @@ class Medidor_Consumo
 
   public:
     //Constructor
-    Medidor_Consumo(String tipo, ESP32Time rtc);
+    Medidor_Consumo();
 
     //Variables
     structPZEM004 SensorFaseA;
@@ -61,6 +75,10 @@ class Medidor_Consumo
 
 
     //Funciones
+    void begin(String tipo, ESP32Time rtc);
+    void reset(String comando);
+
+    void address(PZEM004Tv30 sensor);
     void medicion(void);
     String generateString(void);
 

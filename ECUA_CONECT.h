@@ -3,12 +3,14 @@
   Script Para la conexion y configuracion de ESP32-Medidores Consumo
 */
 #pragma once
-#include <EEPROM.h>
+#include <nvs_flash.h>
 #include <ESP32Time.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <Preferences.h>
+
 
 #include "ECUA_CONECT_HTML_ERROR.h"
 #include "ECUA_CONECT_HTML_MAIN.h"
@@ -29,7 +31,7 @@ void notFound(AsyncWebServerRequest *request) {
 }
 
 // ----------- Credenciales MQTT -----------
-#define MQTT_MAX_PACKET_SIZE 512
+#define MQTT_MAX_PACKET_SIZE 812
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -48,9 +50,6 @@ const long  gmtOffset_sec = -5 * 3600;
 const int   daylightOffset_sec = 0;
 
 // ----------- Credenciales WIFI -----------
-#define EEPROM_SIZE 512
-
-char flash[20];
 char ssid[30];
 char password[30];
 
@@ -92,6 +91,7 @@ void ConectMQTT(void) {
 
     if (client.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
       Serial.println("Conectado!");
+      client.subscribe("CONFIG");
       task_ConectMQTT.setInterval(TASK_MILLISECOND * 100);
     }
     else {
@@ -101,35 +101,106 @@ void ConectMQTT(void) {
   }
 }
 
+void callback(char* topic, byte* message, unsigned int length) {
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  String messageTemp;
+
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)message[i]);
+    messageTemp += (char)message[i];
+  }
+  Serial.println();
+
+  if (String(topic) == "CONFIG") {
+    int indice = messageTemp.indexOf("/");
+    int indice2 = messageTemp.indexOf("/", indice + 1);
+
+    Serial.println(indice);
+    Serial.println(indice2);
+
+    if (indice != -1) {
+      String MAC_SYSTEM = messageTemp.substring(0, indice);
+      String OPCION = messageTemp.substring(indice + 1, indice2);
+      String DATO = messageTemp.substring(indice2 + 1, messageTemp.length());
+
+      Serial.print("MAC: ");
+      Serial.println(MAC_SYSTEM);
+
+      Serial.print("OPCION: ");
+      Serial.println(OPCION);
+
+      Serial.print("DATO: ");
+      Serial.println(DATO);
+
+      if (MAC_SYSTEM == WiFi.macAddress()) {
+        if (OPCION == "RESET") {
+          MC.reset(DATO);
+          Serial.println("Resetear");
+
+        }
+        else if (OPCION == "FLASH") {
+          Serial.println("Flasheado");
+          nvs_flash_erase(); // erase the NVS partition and...
+          nvs_flash_init(); // initialize the NVS partition.
+          ESP.restart();
+        }
+
+        else if (OPCION == "TIME") {
+          Serial.print("Tiempo puesto: ");
+          Serial.println(DATO.toInt());
+          
+          flash.begin("tiempo", false);
+          flash.putULong("periodo", DATO.toInt());
+          flash.end();
+          
+          ESP.restart();
+        }
+
+
+
+
+
+      }
+    }
+  }
+}
+
+
 
 class EcuaRed
 {
   public:
+    //Datos
     String MAC;
     ESP32Time RTC;
     bool Config = false;
 
-    bool begin() {
-      EEPROM.begin(EEPROM_SIZE);
-      EEPROM.get(20, flash);
-      EEPROM.get(40, ssid);
-      EEPROM.get(70, password);
-      EEPROM.end();
-
-      Serial.println("Credenciales: ");
-      Serial.println(ssid);
-      Serial.println(password);
+    //Memoria
+    bool begin(Preferences flash) {
+      flash.begin("credenciales", false);
+      String wifi_ssid = flash.getString("SSID", "none");
+      String wifi_pass = flash.getString("PASS", "none");
+      flash.end();
 
       //Configurar WIFI
       WiFi.disconnect(true);
       delay(1000);
 
-      if (String(flash) != "listo") {
+      if (wifi_ssid == "none" or wifi_pass == "none") {
         Serial.println("No hay credenciales");
         Config = true;
-
         return false;
       }
+
+      wifi_ssid.toCharArray(ssid, 30);
+      wifi_pass.toCharArray(password, 30);
+
+      Serial.println("Credenciales: ");
+      Serial.println(ssid);
+      Serial.println(password);
+
 
       WiFi.onEvent(WiFiGotIP, SYSTEM_EVENT_STA_GOT_IP);
       WiFi.onEvent(WiFiStationDisconnected, SYSTEM_EVENT_STA_DISCONNECTED);
@@ -145,12 +216,14 @@ class EcuaRed
       //Configurar MQTT
       client.setServer(mqtt_server, mqtt_port);
       client.setBufferSize(MQTT_MAX_PACKET_SIZE);
+      client.setCallback(callback);
 
       //Activamos las credenciales
       task_ConectMQTT.enable();
 
       return true;
     }
+
 
 
     String config(void) {
@@ -192,47 +265,37 @@ class EcuaRed
         Serial.println(wifi_network_password);
 
         WiFi.begin(wifi_network_ssid, wifi_network_password);
+        delay(500);
 
         int conteo = 0;
-
-        while (WiFi.status() != WL_CONNECTED and conteo < 4) {
-          delay(1000);
-          Serial.println("Connecting to WiFi..");
+        Serial.print("Connecting to WiFi");
+        while (WiFi.status() != WL_CONNECTED and conteo < 10) {
+          delay(250);
+          Serial.print(".");
           conteo++;
         }
 
         if (WiFi.status() != WL_CONNECTED) {
-          Serial.println("Credenciales invalidas");
+          Serial.print("Credenciales invalidas");
           request->send(200, "text/html", index_html_error);
           WiFi.disconnect(true);
 
         }
         else {
-          Serial.println("Credenciales validas");
+          Serial.print("Credenciales validas");
 
-          EEPROM.begin(EEPROM_SIZE);
-
-          char flash_STATE[20];
-          EEPROM.get(20, flash_STATE);
-
-          if (String(flash_STATE) != "listo") {
-            EEPROM.put(20, "listo");
-          }
-
-          EEPROM.put(40, wifi_network_ssid);
-          EEPROM.put(70, wifi_network_password);
-          EEPROM.commit();
-          EEPROM.end();
-
+          Preferences flash_data;
+          flash_data.begin("credenciales", false);
+          flash_data.putString("SSID", String(wifi_network_ssid));
+          flash_data.putString("PASS", String(wifi_network_password));
+          flash_data.end();
 
           request->send(200, "text/html", index_html_ok);
-          delay(10000);
+          WiFi.disconnect(true);
+
+          delay(3500);
           ESP.restart();
-
         }
-
-
-
       });
       server.onNotFound(notFound);
       server.begin();
