@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>ECUAPLUS CREDENCIALES</title>
+</head>
+<body>
+    <section class="form_wrap">
+        <section class="cantact_info">
+            <section class="info_title">
+                <span class="fa fa-user-circle"></span>
+                <h2>INFORMACION<br>DE CONTACTO</h2>
+            </section>
+            <section class="info_items">
+                <p><span class="fa fa-envelope"></span> ecuapluss@gmail.com</p>
+                <p><span class="fa fa-mobile"></span> +593984766501</p>
+            </section>
+        </section>
+
+        <form action="/get" class="form_contact">
+            <h2></h2>
+            <h2>CREDENCIALES WIFI</h2>
+            <div class="user_info">
+                    <label for="names">
+                        SSID: <input type = "button" id = "refresh"  value = "Refresh" onclick="redes()">
+                    </label>
+                    
+                    <select name="ssd" id = "ssd">
+                    </select>
+                    <br>
+
+                    <label for="email">
+                        PASSWORD: <input type = "button" id = "mostrar" value = "Mostrar"  onclick="changePass()" >
+                    </label>
+
+
+                    <input type="password" name="pass" id = "pass" ><br>
+
+                    <input type="button" value="Submit" id="Submit" onclick="credencialesWIFI()">
+            </div>
+
+        <script src="main.js" href="text/js"></script>
+        </form>
+    </section>  
+</body>
+</html>
