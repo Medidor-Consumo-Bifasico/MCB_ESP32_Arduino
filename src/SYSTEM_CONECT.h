@@ -1,3 +1,9 @@
+/*
+  Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
+  GitHub: https://github.com/avbazurt/CODIGO-Medidor-Consumo-Electrico-Bifasico
+  Conexiones ESP32 - Web Server
+*/
+
 #pragma once
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -18,6 +24,11 @@
   Serial.print("]:");         \
   Serial.println(texto);
 
+#define DEBUG_PRINTF()        \
+  Serial.print("[");          \
+  Serial.print(__FILENAME__); \
+  Serial.print("]:");
+
 // ----------- Credenciales MQTT -----------
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -36,12 +47,20 @@ WebSocketsServer websockets(81);
 class WebSystem
 {
 private:
-  Preferences flash;
   TaskHandle_t WIFI_handle = NULL;
+
+  bool WiFI_Begin = false;
+
   void setup_web_server()
   {
     if (!webServer)
     {
+      DEBUG("INICIANDO WEB SERVER CONFIGURACION");
+      if (WiFI_Begin)
+      {
+        vTaskDelete(WIFI_handle);
+      }
+
       task_ConectMQTT.disable();
       client.disconnect();
 
@@ -53,7 +72,11 @@ private:
 
       MAC = WiFi.macAddress();
 
-      WiFi.softAP("techiesms", "");
+      String NAME = "MCB-100A-" + MAC.substring(15, 17) + "B";
+      while (!(WiFi.softAP(NAME.c_str())))
+      {
+      };
+
       DEBUG(WiFi.softAPIP());
 
       // Route for root / web page
@@ -63,6 +86,14 @@ private:
       // Route to load style.css file
       server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
                 { request->send(SPIFFS, "/style.css", "text/css"); });
+
+      // Route js
+
+      server.on("/fondo.jpg", HTTP_GET, [](AsyncWebServerRequest *request)
+                { request->send(SPIFFS, "/fondo.jpg", "image/jpg"); });
+
+      server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
+                { request->send(SPIFFS, "/favicon.ico"); });
 
       server.on("/main.js", HTTP_GET, [](AsyncWebServerRequest *request)
                 { request->send(SPIFFS, "/main.js"); });
@@ -81,10 +112,14 @@ private:
   }
 
 public:
-  WebSystem() : task_ConectMQTT(TASK_MILLISECOND * 500, TASK_FOREVER, &ConectMQTT, &RedScheduler) {}
+  WebSystem() : task_ConectMQTT(TASK_MILLISECOND * 500, TASK_FOREVER, &ConectMQTT, &RedScheduler)
+  {
+  }
+
+  Preferences flash;
 
   //Constantes Web Server
-  bool config = false;
+  bool config_native = false;
   bool webServer = false;
 
   //Hilos
@@ -118,7 +153,7 @@ public:
     if ((strlen(ssid) == 0) or (strlen(password) == 0))
     {
       DEBUG("NO EXISTEN CREDENCIALES");
-      config = true;
+      config_native = true;
       return false;
     }
 
@@ -132,27 +167,44 @@ public:
         ,
         &WIFI_handle, 0);
 
+    WiFI_Begin = true;
+    delay(500);
     MAC = WiFi.macAddress();
 
     //Configurar MQTT
     client.setServer(mqtt_server, mqtt_port);
     client.setBufferSize(MQTT_MAX_PACKET_SIZE);
     client.setCallback(callback);
+
     return true;
   }
 
-  void loop()
+  void send_MQTT(String text)
+  {
+    client.publish("topicPrincipal", text.c_str());
+  }
+
+  void loop(bool mod_configurate)
   {
     RedScheduler.execute();
     client.loop();
-    if (config)
+    if (mod_configurate)
     {
       setup_web_server();
       websockets.loop();
     }
+
+    else if (!mod_configurate and webServer and !config_native)
+    {
+      DEBUG("DESACTIVANDO WEB SERVER CONFIGURACION");
+      websockets.disconnect(true);
+      delay(1000);
+      WiFi.softAPdisconnect(true);
+      delay(1000);
+      ESP.restart();
+    }
   }
 
-protected:
   static void ConectMQTT(void)
   {
     if (!client.connected() and WiFi.status() == WL_CONNECTED)
@@ -208,11 +260,11 @@ protected:
         {
           if (OPCION == "RESET")
           {
-            Serial.println("Resetear");
+            MC.reset(DATO);
           }
           else if (OPCION == "FLASH")
           {
-            Serial.println("Flasheado");
+            DEBUG("Flasheado");
             nvs_flash_erase(); // erase the NVS partition and...
             nvs_flash_init();  // initialize the NVS partition.
             ESP.restart();
@@ -220,8 +272,15 @@ protected:
 
           else if (OPCION == "TIME")
           {
+            DEBUG_PRINTF();
             Serial.print("Tiempo puesto: ");
             Serial.println(DATO.toInt());
+
+            Preferences flash;
+            flash.begin("tiempo", false);
+            flash.putULong("periodo", DATO.toInt());
+            flash.end();
+
             ESP.restart();
           }
         }
@@ -304,18 +363,20 @@ protected:
     switch (type)
     {
     case WStype_DISCONNECTED:
-      Serial.printf("[%u] Disconnected!\n", num);
+      DEBUG("Cliente Desconectado!");
       break;
     case WStype_CONNECTED:
     {
       IPAddress ip = websockets.remoteIP(num);
+      DEBUG_PRINTF();
       Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
     }
     break;
     case WStype_TEXT:
+      DEBUG_PRINTF();
       Serial.printf("[%u] get Text: %s\n", num, payload);
       String message = String((char *)(payload));
-      Serial.println(message);
+      DEBUG(message);
 
       // ----------- DATA WEB SERVER --------
       StaticJsonDocument<520> json;
@@ -326,8 +387,7 @@ protected:
 
       if (error)
       {
-        Serial.print("deserializeJson() failed: ");
-        Serial.println(error.c_str());
+        DEBUG("DeserializeJson() failed: " + String(error.c_str()));
         return;
       }
 
@@ -336,8 +396,7 @@ protected:
         int n = WiFi.scanNetworks();
         if (n > 0)
         {
-          Serial.print(n);
-          Serial.println(" networks found");
+          DEBUG(String(n) + " networks found");
 
           json.clear();
           JSON = "";
@@ -359,8 +418,8 @@ protected:
       {
         String ssid = doc["SSID"];
         String pass = doc["PASS"];
-        Serial.println(ssid.c_str());
-        Serial.println(pass.c_str());
+        DEBUG("SSID_WIFI: " + ssid);
+        DEBUG("PASS_WIFI: " + pass);
 
         WiFi.disconnect(true);
         delay(500);
@@ -368,6 +427,8 @@ protected:
         delay(500);
 
         int conteo = 0;
+
+        DEBUG_PRINTF();
         Serial.print("Connecting to WiFi");
         while (WiFi.status() != WL_CONNECTED and conteo < 30)
         {
@@ -375,6 +436,7 @@ protected:
           Serial.print(".");
           conteo++;
         }
+        Serial.println();
 
         json.clear();
         JSON = "";
@@ -390,22 +452,19 @@ protected:
 
         else
         {
-          Serial.print("Credenciales validas");
+          DEBUG("Credenciales validas");
           json["STATUS"] = "OK";
           serializeJson(json, JSON);
           websockets.broadcastTXT(JSON);
-          delay(2000);
+          delay(4000);
           Preferences flash;
           flash.begin("credenciales", false);
           flash.putBytes("SSID", ssid.c_str(), 40);
           flash.putBytes("PASS", pass.c_str(), 40);
           flash.end();
-          delay(1000);
+          delay(3000);
           ESP.restart();
-
         }
-
-        
       }
     }
   }

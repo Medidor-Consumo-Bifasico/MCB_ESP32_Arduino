@@ -1,6 +1,6 @@
 /*
   Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
-  GitHub: https://github.com/TheLast20/CODIGO-Medidor-Consumo-Electrico-Bifasico
+  GitHub: https://github.com/avbazurt/CODIGO-Medidor-Consumo-Electrico-Bifasico
   Sensor PZEM004T
 */
 
@@ -9,52 +9,104 @@
 #define RX2 16
 #define TX2 17
 
-Medidor_Consumo::Medidor_Consumo():
-  _faseA(Serial2, RX2, TX2, 0x20),
-  _faseB(Serial2, RX2, TX2, 0x05)
+Medidor_Consumo::Medidor_Consumo(String tipo) : _faseA(Serial2, RX2, TX2, 0x20),
+                                                _faseB(Serial2, RX2, TX2, 0x05)
 {
+  type = tipo;
+
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_STA);
+
+  MAC = WiFi.macAddress();
   SensorFaseA = {0, 0, 0, 0, 0, 0};
   SensorFaseB = {0, 0, 0, 0, 0, 0};
+}
+
+bool Medidor_Consumo::ValidateSensor()
+{
+  medicion();
+
+  bool condicion = (SensorFaseA.voltaje != -1) and
+                   (SensorFaseA.corriente != -1) and
+                   (SensorFaseA.potencia != -1) and
+                   (SensorFaseA.frecuencia != -1) and
+                   (SensorFaseA.energia != -1) and
+                   (SensorFaseA.FP != -1);
+
+  if (!condicion)
+  {
+    DEBUG("ERROR, NO SE DETECTA SENSOR FASE A")
+  };
+
+  if (type == "BIFASICO")
+  {
+    bool condicion_b = (SensorFaseB.voltaje != -1) and
+                       (SensorFaseB.corriente != -1) and
+                       (SensorFaseB.potencia != -1) and
+                       (SensorFaseB.frecuencia != -1) and
+                       (SensorFaseB.energia != -1) and
+                       (SensorFaseB.FP != -1);
+    if (!condicion_b)
+    {
+      DEBUG("ERROR, NO SE DETECTA SENSOR FASE B")
+    }
+    condicion = condicion and condicion_b;
+  }
+  return condicion;
+}
+
+bool Medidor_Consumo::GetAddres()
+{
+  if (ValidateSensor())
+  {
+    //GET ADDRESS
+    String texto = "Direccion Fase A: 0x" + String(_faseA.getAddress());
+    DEBUG(texto);
+    if (type == "BIFASICO")
+    {
+      texto = "Direccion Fase B: 0x" + String(_faseB.getAddress());
+      DEBUG(texto);
+    }
+    return true;
+  }
+
+  else{
+    return false;
+  }
+
+
 
 }
 
-void Medidor_Consumo::begin(String tipo, ESP32Time rtc) {
-  type = tipo;
-  MAC = WiFi.macAddress();
-  RTC = rtc;
-}
-
-void Medidor_Consumo::reset(String comando) {
-  if (comando == "ALL") {
-    Serial.println("Reset Bifasico");
-    _faseA.resetEnergy(); 
-    if (type == "BIFASICO") {
+void Medidor_Consumo::reset(String comando)
+{
+  if (comando == "ALL")
+  {
+    DEBUG("Reset Bifasico");
+    _faseA.resetEnergy();
+    if (type == "BIFASICO")
+    {
       _faseB.resetEnergy();
     }
   }
-  else if (comando == "S1") {
-    Serial.println("Reset S1");
+  else if (comando == "S1")
+  {
+    DEBUG("Reset S1");
     _faseA.resetEnergy();
   }
 
-  else if (comando == "S2") {
-    Serial.println("Reset S2");
-    if (type == "BIFASICO") {
+  else if (comando == "S2")
+  {
+    DEBUG("Reset S2");
+    if (type == "BIFASICO")
+    {
       _faseB.resetEnergy();
     }
   }
 }
 
-
-void Medidor_Consumo::address(PZEM004Tv30 sensor){
-    Serial.print("PZEM ");
-    Serial.print("Address:");
-    Serial.println(sensor.getAddress(), HEX);
-    Serial.println("===================");
-}
-
-void Medidor_Consumo::medicion(void) {
-  address(_faseA);
+void Medidor_Consumo::medicion(void)
+{
   SensorFaseA.voltaje = _faseA.voltage();
   SensorFaseA.corriente = _faseA.current();
   SensorFaseA.potencia = _faseA.power();
@@ -62,27 +114,33 @@ void Medidor_Consumo::medicion(void) {
   SensorFaseA.energia = _faseA.energy();
   SensorFaseA.FP = _faseA.pf();
 
-  if (isnan(SensorFaseA.voltaje)) {
+  if (isnan(SensorFaseA.voltaje))
+  {
     SensorFaseA.voltaje = -1;
   }
-  if (isnan(SensorFaseA.corriente)) {
+  if (isnan(SensorFaseA.corriente))
+  {
     SensorFaseA.corriente = -1;
   }
-  if (isnan(SensorFaseA.potencia)) {
+  if (isnan(SensorFaseA.potencia))
+  {
     SensorFaseA.potencia = -1;
   }
-  if (isnan(SensorFaseA.frecuencia)) {
+  if (isnan(SensorFaseA.frecuencia))
+  {
     SensorFaseA.frecuencia = -1;
   }
-  if (isnan(SensorFaseA.energia)) {
+  if (isnan(SensorFaseA.energia))
+  {
     SensorFaseA.energia = -1;
   }
-  if (isnan(SensorFaseA.FP)) {
+  if (isnan(SensorFaseA.FP))
+  {
     SensorFaseA.FP = -1;
   }
 
-  if (type == "BIFASICO") {
-    address(_faseB);
+  if (type == "BIFASICO")
+  {
     SensorFaseB.voltaje = _faseB.voltage();
     SensorFaseB.corriente = _faseB.current();
     SensorFaseB.potencia = _faseB.power();
@@ -90,29 +148,35 @@ void Medidor_Consumo::medicion(void) {
     SensorFaseB.energia = _faseB.energy();
     SensorFaseB.FP = _faseB.pf();
 
-    if (isnan(SensorFaseB.voltaje)) {
+    if (isnan(SensorFaseB.voltaje))
+    {
       SensorFaseB.voltaje = -1;
     }
-    if (isnan(SensorFaseB.corriente)) {
+    if (isnan(SensorFaseB.corriente))
+    {
       SensorFaseB.corriente = -1;
     }
-    if (isnan(SensorFaseB.potencia)) {
+    if (isnan(SensorFaseB.potencia))
+    {
       SensorFaseB.potencia = -1;
     }
-    if (isnan(SensorFaseB.frecuencia)) {
+    if (isnan(SensorFaseB.frecuencia))
+    {
       SensorFaseB.frecuencia = -1;
     }
-    if (isnan(SensorFaseB.energia)) {
+    if (isnan(SensorFaseB.energia))
+    {
       SensorFaseB.energia = -1;
     }
-    if (isnan(SensorFaseB.FP)) {
+    if (isnan(SensorFaseB.FP))
+    {
       SensorFaseB.FP = -1;
     }
   }
 }
 
-
-void Medidor_Consumo::updateJson(void) {
+void Medidor_Consumo::updateJson(void)
+{
   doc.clear();
   doc["modelo"] = "MC_" + type;
   sensores = doc.createNestedArray("sensores");
@@ -154,8 +218,8 @@ void Medidor_Consumo::updateJson(void) {
   sensores_5["valor"] = String(SensorFaseA.FP);
   sensores_5["unidadMedicion"] = "";
 
-
-  if (type == "BIFASICO") {
+  if (type == "BIFASICO")
+  {
     sensores_6 = sensores.createNestedObject();
     sensores_7 = sensores.createNestedObject();
     sensores_8 = sensores.createNestedObject();
@@ -193,7 +257,7 @@ void Medidor_Consumo::updateJson(void) {
     sensores_11["valor"] = String(SensorFaseB.FP);
     sensores_11["unidadMedicion"] = "";
   }
-  
+
   temperatura = sensores.createNestedObject();
   temperatura["nombre"] = "TEMP";
   temperatura["valor"] = String((temprature_sens_read() - 32) / 1.8);
@@ -203,8 +267,8 @@ void Medidor_Consumo::updateJson(void) {
   serializeJson(doc, text_Json);
 }
 
-
-String Medidor_Consumo::generateString(void) {
+String Medidor_Consumo::generateString(void)
+{
   //Actualizo datos del json
   FECHA_HORA = RTC.getTime("#%Y-%m-%d#%H:%M:%S#");
   medicion();

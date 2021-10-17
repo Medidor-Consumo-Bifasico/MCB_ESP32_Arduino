@@ -1,6 +1,6 @@
 /*
   Autor: Vidal Bazurto (avbazurt@espol.edu.ec)
-  GitHub: https://github.com/TheLast20/CODIGO-Medidor-Consumo-Electrico-Bifasico
+  GitHub: https://github.com/avbazurt/CODIGO-Medidor-Consumo-Electrico-Bifasico
   Sensor PZEM004T
 */
 
@@ -10,6 +10,15 @@
 #include <PZEM004Tv30.h>
 #include <ArduinoJson.h>
 #include <ESP32Time.h>
+
+
+#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#define DEBUG(texto)          \
+  Serial.print("[");          \
+  Serial.print(__FILENAME__); \
+  Serial.print("]:");         \
+  Serial.println(texto);
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,7 +74,7 @@ class Medidor_Consumo
 
   public:
     //Constructor
-    Medidor_Consumo();
+    Medidor_Consumo(String tipo);
 
     //Variables
     structPZEM004 SensorFaseA;
@@ -76,11 +85,13 @@ class Medidor_Consumo
 
 
     //Funciones
-    void begin(String tipo, ESP32Time rtc);
+    bool ValidateSensor();
+
+    bool GetAddres();
     void reset(String comando);
 
-    void address(PZEM004Tv30 sensor);
     void medicion(void);
     String generateString(void);
 
 };
+
